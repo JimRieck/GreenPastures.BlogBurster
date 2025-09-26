@@ -1,0 +1,203 @@
+@page "/"
+@using GreenPastures.BlogBurster.Models
+@using GreenPastures.BlogBurster.Services
+@inject IBlogService BlogService
+@rendermode InteractiveServer
+
+<PageTitle>Blog Posts</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true" Class="mb-2">
+        Latest Blog Posts
+    </MudText>
+    <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mb-4" Color="Color.Secondary">
+        From bloggingduringlunchcom.wordpress.com
+    </MudText>
+    
+    @if (isLoading)
+    {
+        <div class="d-flex justify-center align-center" style="min-height: 400px;">
+            <div class="text-center">
+                <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
+                <MudText Class="mt-3" Typo="Typo.body1">Loading blog posts...</MudText>
+            </div>
+        </div>
+    }
+    else if (blogPosts.Any())
+    {
+        <MudGrid Spacing="4">
+            @foreach (var post in blogPosts)
+            {
+                <MudItem xs="12" sm="6" lg="4" xl="3">
+                    <MudCard Class="h-100 blog-post-card" Elevation="3" Style="transition: all 0.3s ease-in-out; border-radius: 12px;">
+                        <MudCardHeader Class="pb-2" Style="background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-darken) 100%); color: white; border-radius: 12px 12px 0 0;">
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6" Class="mb-1" Style="font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    @post.Title
+                                </MudText>
+                                <div class="d-flex align-center gap-2 mt-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="opacity: 0.9;" />
+                                    <MudText Typo="Typo.caption" Style="opacity: 0.9; font-weight: 500;">
+                                        @post.Author
+                                    </MudText>
+                                </div>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        
+                        <MudCardContent Class="pb-2" Style="flex-grow: 1; display: flex; flex-direction: column;">
+                            <div class="d-flex align-center gap-2 mb-3" style="color: var(--mud-palette-text-secondary);">
+                                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                                <MudText Typo="Typo.caption" Style="font-weight: 500;">
+                                    @(post.PublishDate == DateTime.MinValue ? "Unknown Date" : post.PublishDate.ToString("MMMM dd, yyyy"))
+                                </MudText>
+                            </div>
+                            
+                            <MudText Typo="Typo.body2" Class="mb-3" Style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; line-height: 1.5; color: var(--mud-palette-text-primary); flex-grow: 1;">
+                                @GetTruncatedSummary(post.Summary)
+                            </MudText>
+                            
+                            @if (post.Categories.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-1 mb-3" style="margin-top: auto;">
+                                    @foreach (var category in post.Categories.Take(2))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled" 
+                                               Style="font-size: 0.7rem; height: 20px; border-radius: 10px;">
+                                            @category
+                                        </MudChip>
+                                    }
+                                    @if (post.Categories.Count > 2)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text" 
+                                               Style="font-size: 0.7rem; height: 20px;">
+                                            +@(post.Categories.Count - 2)
+                                        </MudChip>
+                                    }
+                                </div>
+                            }
+                        </MudCardContent>
+                        
+                        <MudCardActions Class="pt-0 pb-3 px-4" Style="border-top: 1px solid var(--mud-palette-lines-default);">
+                            <MudSpacer />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                     Href="@post.Url" Target="_blank" 
+                                     StartIcon="@Icons.Material.Filled.ReadMore"
+                                     Style="border-radius: 20px; text-transform: none; font-weight: 600;">
+                                Read Article
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+        
+        <div class="text-center mt-6">
+            <MudPaper Class="pa-3" Style="background-color: var(--mud-palette-background-grey); border-radius: 20px; display: inline-block;">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    <MudIcon Icon="@Icons.Material.Filled.Article" Size="Size.Small" Class="mr-2" />
+                    Showing @blogPosts.Count blog posts
+                </MudText>
+            </MudPaper>
+        </div>
+    }
+    else
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="2" Style="border-radius: 16px; background: linear-gradient(135deg, var(--mud-palette-background-grey) 0%, var(--mud-palette-surface) 100%);">
+            <MudIcon Icon="@Icons.Material.Filled.Article" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+            <MudText Typo="Typo.h5" Class="mb-3" Color="Color.Primary">No Blog Posts Available</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+                We couldn't load any blog posts at the moment. Please check your connection and try again.
+            </MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2" OnClick="RefreshPosts"
+                     StartIcon="@Icons.Material.Filled.Refresh" Style="border-radius: 20px;">
+                Try Again
+            </MudButton>
+        </MudPaper>
+    }
+    
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4" CloseIcon="@Icons.Material.Filled.Close" CloseIconClicked="ClearError"
+                Style="border-radius: 12px; border-left: 4px solid var(--mud-palette-error);">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
+                <div>
+                    <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">Error Loading Posts</MudText>
+                    <MudText Typo="Typo.body2">@errorMessage</MudText>
+                </div>
+            </div>
+        </MudAlert>
+    }
+</MudContainer>
+
+<style>
+    .blog-post-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    .blog-post-card .mud-card-header {
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .blog-post-card .mud-card-content {
+        min-height: 180px;
+    }
+</style>
+
+@code {
+    private List<BlogPost> blogPosts = new();
+    private bool isLoading = true;
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBlogPosts();
+    }
+
+    private async Task LoadBlogPosts()
+    {
+        isLoading = true;
+        errorMessage = "";
+        
+        try
+        {
+            blogPosts = await BlogService.GetBlogPostsAsync(100);
+            
+            if (!blogPosts.Any())
+            {
+                errorMessage = "No blog posts were found using WordPress API.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load blog posts: {ex.Message}";
+            blogPosts = new List<BlogPost>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshPosts()
+    {
+        await LoadBlogPosts();
+    }
+
+    private void ClearError()
+    {
+        errorMessage = "";
+    }
+
+    private string GetTruncatedSummary(string summary)
+    {
+        if (string.IsNullOrEmpty(summary))
+            return "No summary available.";
+        
+        return summary.Length > 180 ? summary.Substring(0, 180) + "..." : summary;
+    }
+}
